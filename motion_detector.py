@@ -2,54 +2,45 @@ import cv2
 import telepot
 import numpy as np
 import time
+import os
 
-# Initialize the Telegram bot
-bot = telepot.Bot('YOUR_TELEGRAM_BOT_TOKEN')
-
-# Load YOLO model
-net = cv2.dnn.readNet("yolo.weights", "yolo.cfg")
-layer_names = net.getLayerNames()
-output_layers = [layer_names[i[0] - 1] for i in net.getUnconnectedOutLayers()]
+# Initialize the Telegram bot (Replace '' with your bot token)
+bot = telepot.Bot('Your Bot Token')
 
 # Function to send a notification with a video clip to Telegram
 def send_notification(video_path):
-    bot.sendVideo('TELEGRAM_CHAT_ID', video=open(video_path, 'rb'))
+    print("Sending notification...")
+    try:
+        print("Sending video:", video_path)
+        with open(video_path,'rb') as video_file:
+            # Replace 'YOUR_TELEGRAM_CHAT_ID' with your Telegram chat ID 
+            bot.sendVideo('Your telegram chat ID', video=video_file)
+        print("Notification sent successfully")
+        
+    except Exception as e:
+        print("Error sending notification:", e)
 
-# Function to detect persons in a frame
-def detect_persons(frame):
-    height, width, _ = frame.shape
-    blob = cv2.dnn.blobFromImage(frame, 0.00392, (416, 416), (0, 0, 0), True, crop=False)
-    net.setInput(blob)
-    outs = net.forward(output_layers)
-
-    # Process each detection
-    for out in outs:
-        for detection in out:
-            scores = detection[5:]
-            class_id = np.argmax(scores)
-            confidence = scores[class_id]
-
-            # If the object detected is a person and confidence is high enough
-            if class_id == 0 and confidence > 0.5:
-                # Get bounding box coordinates
-                center_x = int(detection[0] * width)
-                center_y = int(detection[1] * height)
-                w = int(detection[2] * width)
-                h = int(detection[3] * height)
-
-                # Draw bounding box around the person
-                cv2.rectangle(frame, (center_x - w // 2, center_y - h // 2), (center_x + w // 2, center_y + h // 2), (0, 255, 0), 2)
-
-                # Write 'Person' text
-                cv2.putText(frame, 'Person', (center_x, center_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-
-# Main function to detect motion, perform person detection, and notify on Telegram
+# Main function to detect motion, record video, and notify on Telegram
 def main():
+    # Create a 'videos' folder if it doesn't exist
+    if not os.path.exists('videos'):
+        os.makedirs('videos')
+
+    # Define the RTSP URL with authentication and port
+    username = 'admin'
+    password = 'cpassword'
+    ip_address = '192.168.1.6'
+    port = '10554'
+    rtsp_url = f'rtsp://{username}:{password}@{ip_address}:{port}/Streaming/channels/101'
+
     # Initialize video capture object
-    cap = cv2.VideoCapture("YOUR_RTSP_STREAM_URL")
+    cap = cv2.VideoCapture(rtsp_url)
 
     # Initialize background subtractor
     bg_subtractor = cv2.createBackgroundSubtractorMOG2()
+
+    # Initialize reference frame
+    reference_frame = None
 
     while True:
         ret, frame = cap.read()
@@ -65,28 +56,38 @@ def main():
         # Find contours
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+        # Print number of contours detected
+        print("Number of contours detected:", len(contours))
+
         # Check if any contours (motion) are detected
         if contours:
-            # Perform person detection
-            detect_persons(frame)
+            print("Motion detected!")
 
-            # Save the video clip for notification
-            timestamp = int(time.time())
-            video_path = f'video_{timestamp}.avi'
-            out = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc(*'DIVX'), 10, (frame.shape[1], frame.shape[0]))
+            # Print frame shape
+            print("Frame shape:", frame.shape)
+
+            # Create video writer object if not already created
+            if 'out' not in locals():
+                timestamp = int(time.time())
+                video_path = f'videos/video_{timestamp}.mp4'
+                out = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc(*'mp4v'), 10, (frame.shape[1], frame.shape[0]))
+
+            # Write frame to the video file
             out.write(frame)
 
-            # Send notification with the video clip
-            send_notification(video_path)
-
-            # Release the video writer
-            out.release()
+            try:
+                # Send notification with the video clip
+                send_notification(video_path)
+            except Exception as e:
+                print("Error sending notification:", e)
 
             # Sleep to avoid continuous notifications for the same event
             time.sleep(30)
 
-    # Release the camera
+    # Release the camera and video writer
     cap.release()
+    if 'out' in locals():
+        out.release()
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
