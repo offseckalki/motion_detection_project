@@ -4,7 +4,7 @@ import numpy as np
 import time
 
 # Initialize the Telegram bot (Replace '' with your bot token)
-bot = telepot.Bot('YOUR_BOT_TOKEN_HERE')
+bot = telepot.Bot('7186251726:AAFjsNe7pVz-r_GbndNqoMIpCJ06fzow6mA')
 
 # Load YOLO
 net = cv2.dnn.readNet("yolov3.weights", "yolov3.cfg")
@@ -21,14 +21,14 @@ def send_notification(video_path):
         print("Sending video:", video_path)
         with open(video_path, 'rb') as video_file:
             # Replace 'YOUR_TELEGRAM_CHAT_ID' with your Telegram chat ID 
-            bot.sendVideo('YOUR_TELEGRAM_CHAT_ID_HERE', video=video_file)
+            bot.sendVideo('891381553', video=video_file)
         print("Notification sent successfully")
     except Exception as e:
         print("Error sending notification:", e)
 
 # Define the RTSP URL with authentication and port
 username = 'admin'
-password = 'passs'
+password = 'cameraman123'
 ip_address = '192.168.1.6'
 port = '10554'
 rtsp_url = f'rtsp://{username}:{password}@{ip_address}:{port}/Streaming/channels/101'
@@ -39,11 +39,25 @@ cap = cv2.VideoCapture(rtsp_url)
 # Main function to detect human motion and notify on Telegram
 def main():
     motion_detected = False
+    max_retries = 3  # Maximum number of retries for decoding frames
+    retries = 0
+
     while True:
-        ret, frame = cap.read()
+        ret = False
+        frame = None
+
+        # Retry decoding frame if failed
+        while not ret and retries < max_retries:
+            ret, frame = cap.read()
+            retries += 1
+            if not ret:
+                print("Error decoding frame. Retrying...")
 
         if not ret:
+            print("Failed to decode frame after retries. Exiting...")
             break
+
+        retries = 0  # Reset retries after successful frame decoding
 
         # Detecting objects
         height, width, channels = frame.shape
