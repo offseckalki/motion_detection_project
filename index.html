@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Stream</title>
+</head>
+<body>
+    <h1>Live Stream</h1>
+    <video id="live-video" width="640" height="480" controls autoplay></video>
+    <script>
+        const video = document.getElementById('live-video');
+        video.src = 'rtsp://admin:@192.168.1.6:10554/Streaming/channels/101';
+        video.play();
+    </script>
+</body>
+</html>
