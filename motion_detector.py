@@ -5,7 +5,7 @@ import time
 import os
 
 # Initialize the Telegram bot (Replace '' with your bot token)
-bot = telepot.Bot('7186251726:AAFudhlkashdlkjhVz-r_GbndNqoMIpCJ06fzow6mA')
+bot = telepot.Bot('7186251726:AAFjsNe7pVz-r_GbndNqoMIpCJ06fzow6mA')
 
 # Load YOLO
 net = cv2.dnn.readNet("yolov3.weights", "yolov3.cfg")
@@ -17,7 +17,7 @@ output_layers = [layer_names[i - 1] for i in output_layers_indices]
 
 # Define the RTSP URL with authentication and port
 username = 'admin'
-password = 'Yourpass'
+password = 'cameraman123'
 ip_address = '192.168.1.6'
 port = '10554'
 rtsp_url = f'rtsp://{username}:{password}@{ip_address}:{port}/Streaming/channels/301'
@@ -42,7 +42,7 @@ def send_notification_photo(photo_path):
         print("Sending photo:", photo_path)
         with open(photo_path, 'rb') as photo_file:
             # Replace 'YOUR_TELEGRAM_CHAT_ID' with your Telegram chat ID
-            bot.sendPhoto('89138asad1553', photo=photo_file, caption="Someone is on the door.")
+            bot.sendPhoto('891381553', photo=photo_file, caption="Someone is on the door.")
         print("Notification with photo sent successfully")
     except Exception as e:
         print("Error sending notification with photo:", e)
@@ -54,7 +54,7 @@ def send_notification_video(video_path):
         print("Sending video:", video_path)
         with open(video_path, 'rb') as video_file:
             # Replace 'YOUR_TELEGRAM_CHAT_ID' with your Telegram chat ID
-            bot.sendVideo('89138sadsa1553', video=video_file, caption="Someone is on the door.")
+            bot.sendVideo('891381553', video=video_file, caption="Someone is on the door.")
         print("Notification with video sent successfully")
     except Exception as e:
         print("Error sending notification with video:", e)
@@ -98,71 +98,70 @@ def record_video(start_time):
     except Exception as e:
         print("Error recording video:", e)
 
+# Function to detect humans and draw bounding boxes
+def detect_humans(frame):
+    height, width, channels = frame.shape
+    blob = cv2.dnn.blobFromImage(frame, 0.00392, (416, 416), (0, 0, 0), True, crop=False)
+    net.setInput(blob)
+    outs = net.forward(output_layers)
+
+    boxes = []
+    for out in outs:
+        for detection in out:
+            scores = detection[5:]
+            class_id = np.argmax(scores)
+            confidence = scores[class_id]
+            if confidence > 0.5 and class_id == 0:  # Only consider 'person' class
+                # Object detected is a person
+                center_x = int(detection[0] * width)
+                center_y = int(detection[1] * height)
+                w = int(detection[2] * width)
+                h = int(detection[3] * height)
+
+                x = int(center_x - w / 2)
+                y = int(center_y - h / 2)
+
+                boxes.append([x, y, w, h])
+
+    return boxes
+
+# Function to draw bounding boxes around detected humans
+def draw_boxes(frame, boxes):
+    for x, y, w, h in boxes:
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
 # Main function for motion detection
 def main():
     global notification_sent
-    motion_detected = False
     start_time = 0
-
     while True:
         try:
             ret, frame = cap.read()
             if not ret:
                 break
 
-            # Detecting objects
-            height, width, channels = frame.shape
-            blob = cv2.dnn.blobFromImage(frame, 0.00392, (416, 416), (0, 0, 0), True, crop=False)
-            net.setInput(blob)
-            outs = net.forward(output_layers)
-
-            class_ids = []
-            confidences = []
-            boxes = []
-            for out in outs:
-                for detection in out:
-                    scores = detection[5:]
-                    class_id = np.argmax(scores)
-                    confidence = scores[class_id]
-                    if confidence > 0.5 and class_id == 0:  # Only consider 'person' class
-                        # Object detected is a person
-                        center_x = int(detection[0] * width)
-                        center_y = int(detection[1] * height)
-                        w = int(detection[2] * width)
-                        h = int(detection[3] * height)
-
-                        x = int(center_x - w / 2)
-                        y = int(center_y - h / 2)
-
-                        boxes.append([x, y, w, h])
-                        confidences.append(float(confidence))
-                        class_ids.append(class_id)
-
-            # Draw bounding box around detected humans
-            indexes = cv2.dnn.NMSBoxes(boxes, confidences, 0.5, 0.4)
-            if len(indexes) > 0:
-                if not notification_sent:  # Send notification only if it's not sent already
+            # Detect humans and draw bounding boxes
+            boxes = detect_humans(frame)
+            if len(boxes) > 0:
+                if not notification_sent:
                     print("Motion detected!")
                     capture_photo()
                     notification_sent = True
-                motion_detected = True
-                if not start_time:
-                    start_time = time.time()
 
-                for i in range(len(boxes)):
-                    if i in indexes:
-                        x, y, w, h = boxes[i]
-                        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                # Draw bounding boxes on the frame
+                draw_boxes(frame, boxes)
 
-            # If motion detected and 20 seconds elapsed since last detection, reset notification flag
-            if motion_detected and time.time() - start_time >= 20:
+                # If motion detected and notification is sent, record video
+                if notification_sent:
+                    if not start_time:
+                        start_time = time.time()
+                    record_video(start_time)
+                    start_time = 0
+
+            else:
+                # If no humans detected, reset notification flag and start time
                 notification_sent = False
-                motion_detected = False
                 start_time = 0
-
-            # If motion detected and notification is sent, record video
-            if motion_detected and notification_sent:
-                record_video(start_time)
 
         except Exception as e:
             print("Error:", e)
