@@ -5,7 +5,7 @@ import time
 import os
 
 # Initialize the Telegram bot (Replace '' with your bot token)
-bot = telepot.Bot('YOUR_BOT_TOKEN')
+bot = telepot.Bot('7186251726:AAasdasdasdbndNqoMIpCJ06fzow6mA')
 
 # Load YOLO
 net = cv2.dnn.readNet("yolov3.weights", "yolov3.cfg")
@@ -17,10 +17,10 @@ output_layers = [layer_names[i - 1] for i in output_layers_indices]
 
 # Define the RTSP URL with authentication and port
 username = 'admin'
-password = 'YourPASS'
+password = 'caasdasan123'
 ip_address = '192.168.1.6'
 port = '10554'
-rtsp_url = f'rtsp://{username}:{password}@{ip_address}:{port}/Streaming/channels/301'
+rtsp_url = f'rtsp://{username}:{password}@{ip_address}:{port}/Streaming/channels/101'
 
 # Initialize video capture object
 cap = cv2.VideoCapture(rtsp_url)
@@ -42,7 +42,7 @@ def send_notification_photo(photo_path):
         print("Sending photo:", photo_path)
         with open(photo_path, 'rb') as photo_file:
             # Replace 'YOUR_TELEGRAM_CHAT_ID' with your Telegram chat ID
-            bot.sendPhoto('YOUR_TELEGRAM_CHAT_ID', photo=photo_file, caption="Someone is on the door.")
+            bot.sendPhoto('832349138asdas1553', photo=photo_file, caption="Someone is on the door.")
         print("Notification with photo sent successfully")
     except Exception as e:
         print("Error sending notification with photo:", e)
@@ -54,7 +54,7 @@ def send_notification_video(video_path):
         print("Sending video:", video_path)
         with open(video_path, 'rb') as video_file:
             # Replace 'YOUR_TELEGRAM_CHAT_ID' with your Telegram chat ID
-            bot.sendVideo('YOUR_TELEGRAM_CHAT_ID', video=video_file, caption="Someone is on the door.")
+            bot.sendVideo('8913243815asdas53', video=video_file, caption="Someone is on the door.")
         print("Notification with video sent successfully")
     except Exception as e:
         print("Error sending notification with video:", e)
@@ -80,7 +80,7 @@ def record_video(start_time):
     try:
         # Initialize video writer object
         video_path = os.path.join(videos_dir, f"{start_time}.mp4")
-        out = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc(*'mp4v'), 12, (1080, 1920))  # Adjust resolution and FPS as needed
+        out = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc(*'mp4v'), 25, (960, 1080))  # Adjust resolution and FPS as needed
 
         # Record video for 15 seconds
         while time.time() - start_time < 15:
@@ -142,32 +142,25 @@ def main():
 
             # Draw bounding box around detected humans
             indexes = cv2.dnn.NMSBoxes(boxes, confidences, 0.5, 0.4)
-            if len(indexes) > 0:
-                if not notification_sent:  # Send notification only if it's not sent already
-                    print("Motion detected!")
-                    capture_photo()
-                    notification_sent = True
-                motion_detected = True
-                if not start_time:
-                    start_time = time.time()
+            for i in range(len(boxes)):
+                if i in indexes:
+                    x, y, w, h = boxes[i]
+                    cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-                for i in range(len(boxes)):
-                    if i in indexes:
-                        x, y, w, h = boxes[i]
-                        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            # Display the frame with bounding boxes
+            cv2.imshow('Motion Detection', frame)
+            cv2.waitKey(1)
 
-            # If motion detected and 20 seconds elapsed since last detection, reset notification flag
-            if motion_detected and time.time() - start_time >= 20:
-                notification_sent = False
-                motion_detected = False
-                start_time = 0
-
-            # If motion detected and notification is sent, record video
-            if motion_detected and notification_sent:
-                record_video(start_time)
+            # If motion detected and notification is not sent, capture photo and record video
+            if len(indexes) > 0 and not notification_sent:
+                print("Motion detected!")
+                capture_photo()
+                record_video(time.time())
+                notification_sent = True
 
         except Exception as e:
             print("Error:", e)
+            time.sleep(120)  # Wait for 2 minutes before restarting detection process
 
 # Start motion detection
 main()
