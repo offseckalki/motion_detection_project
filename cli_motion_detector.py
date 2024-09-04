@@ -5,9 +5,9 @@ import time
 import os
 
 # Initialize the Telegram bot
-bot_token = 'YOUR_BOT_TOKEN'
+bot_token = 'Add your own token here'
 bot = telepot.Bot(bot_token)
-chat_id = 'YOUR_CHAT_ID'  # Replace with your actual chat ID
+chat_id = '89XXXXXXX21'  # Replace with your actual chat ID
 
 # Load YOLO
 net = cv2.dnn.readNet("yolov3.weights", "yolov3.cfg")
@@ -17,10 +17,10 @@ output_layers = [layer_names[i - 1] for i in output_layers_indices]
 
 # Define the RTSP URL with authentication and port
 username = 'admin'
-password = 'testing-something'
+password = 'testingsomethingdudezy'
 ip_address = '192.168.1.6'
 port = '554'
-rtsp_url = f'rtsp://{username}:{password}@{ip_address}:{port}/Streaming/channels/301'
+rtsp_url = f'rtsp://{username}:{password}@{ip_address}:{port}/h264/ch02/main/av_stream'
 
 # Initialize video capture object
 cap = cv2.VideoCapture(rtsp_url)
@@ -57,11 +57,21 @@ def send_notification_video(video_path):
     except Exception as e:
         print("Error sending notification with video:", e)
 
-# Function to send startup notification
+# Function to send startup notification with snapshot
 def send_startup_notification():
-    print("Sending startup notification...")
+    print("Sending startup notification with snapshot...")
     try:
-        bot.sendMessage(chat_id, "Motion detection script has started.")
+        # Capture a snapshot from the stream
+        ret, frame = cap.read()
+        if ret:
+            current_time = time.strftime("%Y%m%d-%H%M%S")
+            photo_path = os.path.join(photos_dir, f"startup_{current_time}.jpg")
+            cv2.imwrite(photo_path, frame)
+            # Send startup message and snapshot
+            bot.sendMessage(chat_id, "Motion detection script has started and is running. Here's a snapshot:")
+            send_notification_photo(photo_path)
+        else:
+            bot.sendMessage(chat_id, "Motion detection script has started, but unable to capture a snapshot.")
         print("Startup notification sent successfully")
     except Exception as e:
         print("Error sending startup notification:", e)
@@ -149,7 +159,7 @@ def main():
     global notification_sent
     print("Human motion detection started...")
 
-    # Send startup notification
+    # Send startup notification with snapshot
     send_startup_notification()
 
     while True:
